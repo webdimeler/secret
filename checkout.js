@@ -2,7 +2,7 @@
 (() => {
   const db = window.supabase.createClient('https://ywhwqpijlevtoqvhodkf.supabase.co','sb_publishable_x2MuIwfoQKZ6R33K1Tl4_Q_8HZJIUSY');
   const $ = (s) => document.querySelector(s);
-  let cart = {};
+  let cart = {}, catalog = {};
   try { cart = JSON.parse(localStorage.getItem('secret_cart') || '{}'); } catch (_) {}
   const money = n => Number(n || 0).toLocaleString('ar-EG');
   const save = () => { localStorage.setItem('secret_cart', JSON.stringify(cart)); const el=$('#cartCount'); if(el) el.textContent=Object.values(cart).reduce((n,x)=>n+x.quantity,0); };
@@ -13,6 +13,7 @@
     $('#cartItems').innerHTML=rows.length?rows.map(([id,x])=>'<p>'+x.name+' — '+money(x.price)+' ج.م <button data-minus="'+id+'">−</button> '+x.quantity+' <button data-plus="'+id+'">+</button> <button data-remove="'+id+'">حذف</button></p>').join(''):'السلة فارغة';
     $('#cartTotal').textContent=money(rows.reduce((n,[,x])=>n+x.price*x.quantity,0)); save();
   }
+  async function prepareButtons(){const {data}=await db.from('products').select('id,name,price,stock_quantity,is_active').eq('is_active',true);catalog=Object.fromEntries((data||[]).map(p=>[p.id,p]));const grid=$('#grid');const attach=()=>grid.querySelectorAll('.card').forEach(card=>{if(card.querySelector('[data-add]'))return;const title=card.querySelector('h3')?.textContent;const p=Object.values(catalog).find(x=>x.name===title);if(!p)return;const b=document.createElement('button');b.className='btn2';b.dataset.add=p.id;b.textContent='أضيفي للسلة';card.appendChild(b);});new MutationObserver(attach).observe(grid,{childList:true,subtree:true});attach();grid.addEventListener('click',e=>{const b=e.target.closest('[data-add]');if(!b)return;const p=catalog[b.dataset.add];if(!p)return;cart[p.id] ||= {name:p.name,price:Number(p.price),quantity:0};if(cart[p.id].quantity>=Math.min(20,Number(p.stock_quantity)||0)){alert('الكمية المتاحة غير كافية');return;}cart[p.id].quantity++;draw();});} prepareButtons();
   $('#openCart').onclick=()=>{draw();show('cartModal');};
   $('#toCheckout').onclick=()=>{if(!Object.keys(cart).length){alert('السلة فارغة');return;}hide('cartModal');show('checkoutModal');};
   document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>hide(b.dataset.close));
