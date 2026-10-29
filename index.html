@@ -8,10 +8,11 @@
 </style>
 </head>
 <body>
-<header><h1>Secret KFS</h1><nav><a href="/admin/">لوحة الإدارة</a></nav></header>
+<header><h1>Secret KFS</h1><nav><a href="admin/">لوحة الإدارة</a> <button id="openCart" class="btn">السلة <span id="cartCount">0</span></button></nav></header>
 <section class="hero"><h2>أناقتك تبدأ من هنا ✨</h2><p>ملابس، حقائب، إكسسوارات وكل ما يكمّل إطلالتك</p><a class="btn" href="#products">تصفّحي المنتجات</a></section>
 <main class="wrap" id="products"><h2>منتجاتنا</h2><div class="bar"><input id="search" placeholder="ابحثي عن منتج…"><select id="category"><option value="">كل الأقسام</option></select></div><div id="status" class="empty">جارٍ تحميل المنتجات…</div><div id="grid" class="grid"></div></main>
 <footer><p>Secret KFS · كفر الشيخ أمام كشري الزعيم</p><p><a href="https://maps.app.goo.gl/MuwgDWsxadpVudKU7">موقعنا على الخريطة</a> · <a href="https://wa.me/201550121102">تواصلي عبر واتساب</a></p></footer>
+<div id="cartModal" class="modal"><section class="dialog"><button data-close="cartModal">إغلاق</button><h2>سلة المشتريات</h2><div id="cartItems"></div><p>الإجمالي المبدئي: <b id="cartTotal">0</b> ج.م</p><button id="toCheckout" class="btn">إتمام الطلب</button></section></div><div id="checkoutModal" class="modal"><section class="dialog"><button data-close="checkoutModal">إغلاق</button><h2>بيانات الطلب</h2><form id="checkout"><input name="customer_name" required placeholder="الاسم بالكامل"><input name="phone" required placeholder="رقم الهاتف"><input name="address" required placeholder="العنوان بالتفصيل"><input name="email" type="email" placeholder="البريد الإلكتروني (اختياري)"><input name="delivery_service" placeholder="شركة الشحن (اختياري)"><textarea name="notes" placeholder="ملاحظات"></textarea><p id="checkoutMsg"></p><button id="submitOrder" class="btn" type="submit">تأكيد الطلب</button></form></section></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 const SUPABASE_URL='https://ywhwqpijlevtoqvhodkf.supabase.co';
@@ -23,5 +24,5 @@ function render(){const q=document.querySelector('#search').value.trim().toLower
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 async function load(){try{const {data,error}=await db.from('products').select('id,name,description,category,price,is_active').eq('is_active',true).order('created_at',{ascending:false});if(error)throw error;products=data||[];const cats=[...new Set(products.map(p=>p.category).filter(Boolean))];document.querySelector('#category').innerHTML='<option value="">كل الأقسام</option>'+cats.map(c=>'<option>'+esc(c)+'</option>').join('');render()}catch(e){status.textContent='تعذر تحميل المنتجات. تحقق من إعدادات قاعدة البيانات وصلاحيات القراءة.';console.error(e)}}
 document.querySelector('#search').addEventListener('input',render);document.querySelector('#category').addEventListener('change',render);load();
-</script>
+</script><script src="checkout.js"></script>
 </body></html>
