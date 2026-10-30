@@ -61,18 +61,18 @@ class MainActivity : Activity() {
                 }
 
                 override fun onPageStarted(view: WebView, url: String, favicon: android.graphics.Bitmap?) {
-                    progress.visibility = View.VISIBLE
-                    errorPanel.visibility = View.GONE
+                    this@MainActivity.progress.visibility = View.VISIBLE
+                    this@MainActivity.errorPanel.visibility = View.GONE
                 }
 
                 override fun onPageFinished(view: WebView, url: String) {
-                    progress.visibility = View.GONE
+                    this@MainActivity.progress.visibility = View.GONE
                 }
 
                 override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
                     if (request.isForMainFrame) {
-                        progress.visibility = View.GONE
-                        errorPanel.visibility = View.VISIBLE
+                        this@MainActivity.progress.visibility = View.GONE
+                        this@MainActivity.errorPanel.visibility = View.VISIBLE
                     }
                 }
             }
