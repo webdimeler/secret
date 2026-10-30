@@ -219,6 +219,7 @@ class MainActivity : Activity() {
                     try { contentResolver.releasePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) } catch (_: Exception) {}
                 }
                 selectedTreeUri = null
+                getSharedPreferences("secret_storage", MODE_PRIVATE).edit().remove("selected_tree_uri").apply()
                 webView.evaluateJavascript("window.onStorageSharingStopped && window.onStorageSharingStopped()", null)
             }
         }
