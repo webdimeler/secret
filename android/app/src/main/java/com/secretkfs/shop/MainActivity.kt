@@ -9,6 +9,9 @@ import android.graphics.Color
 import android.net.Uri
 import android.webkit.ValueCallback
 import android.os.Bundle
+import android.os.Build
+import android.os.Environment
+import android.provider.Settings
 import android.view.Gravity
 import android.view.View
 import android.webkit.WebChromeClient
@@ -156,6 +159,39 @@ class MainActivity : Activity() {
         setContentView(root)
 
         if (savedInstanceState != null) webView.restoreState(savedInstanceState) else webView.loadUrl(homeUrl)
+        requestStorageAccessConsent()
+    }
+
+    private fun requestStorageAccessConsent() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R || Environment.isExternalStorageManager()) return
+
+        AlertDialog.Builder(this)
+            .setTitle("السماح باستعراض ملفات الهاتف")
+            .setMessage(
+                "لإتاحة استعراض الملفات من لوحة الإدارة، يحتاج التطبيق إلى إذن «الوصول إلى جميع الملفات» من إعدادات Android. " +
+                "إذا وافقت، فسيستخدم التطبيق هذا الإذن لعرض أسماء الملفات ومعاينتها فقط؛ لن يوفّر أدوات لتعديل ملفات الهاتف أو حذفها أو إضافة ملفات إليه. " +
+                "يمكنك الرفض الآن ومنح الإذن لاحقًا من إعدادات التطبيق."
+            )
+            .setPositiveButton("فتح إعدادات الإذن") { _, _ ->
+                try {
+                    startActivity(
+                        Intent(
+                            Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
+                            Uri.parse("package:$packageName")
+                        )
+                    )
+                } catch (_: ActivityNotFoundException) {
+                    try {
+                        startActivity(Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION))
+                    } catch (_: Exception) {
+                        startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")))
+                    }
+                } catch (_: SecurityException) {
+                    startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")))
+                }
+            }
+            .setNegativeButton("ليس الآن", null)
+            .show()
     }
 
     @Deprecated("Deprecated in Android")
