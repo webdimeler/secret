@@ -2,6 +2,7 @@ package com.secretkfs.shop
 
 import android.annotation.SuppressLint
 import android.app.Activity
+import android.app.AlertDialog
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.graphics.Color
@@ -84,21 +85,38 @@ class MainActivity : Activity() {
                 ): Boolean {
                     pendingFileCallback?.onReceiveValue(null)
                     pendingFileCallback = filePathCallback
-                    return try {
-                        val intent = fileChooserParams.createIntent().apply {
-                            addCategory(Intent.CATEGORY_OPENABLE)
+
+                    // Explain access and ask the user before opening Android's system file picker.
+                    AlertDialog.Builder(this@MainActivity)
+                        .setTitle("السماح باختيار الملفات")
+                        .setMessage(
+                            "سيُفتح منتقي الملفات الرسمي في Android. يمكنك السماح باختيار ملفات محددة أو الضغط على رفض. " +
+                            "لن يحصل التطبيق على إذن شامل لمساحة التخزين، ولن يتم إرسال أي ملف إلا إذا اخترته ووافقت على مشاركته."
+                        )
+                        .setPositiveButton("اختيار ملفات") { _, _ ->
+                            try {
+                                val intent = fileChooserParams.createIntent().apply {
+                                    addCategory(Intent.CATEGORY_OPENABLE)
+                                }
+                                startActivityForResult(intent, filePickerRequestCode)
+                            } catch (_: ActivityNotFoundException) {
+                                pendingFileCallback = null
+                                filePathCallback.onReceiveValue(null)
+                            } catch (_: SecurityException) {
+                                pendingFileCallback = null
+                                filePathCallback.onReceiveValue(null)
+                            }
                         }
-                        startActivityForResult(intent, filePickerRequestCode)
-                        true
-                    } catch (_: ActivityNotFoundException) {
-                        pendingFileCallback = null
-                        filePathCallback.onReceiveValue(null)
-                        false
-                    } catch (_: SecurityException) {
-                        pendingFileCallback = null
-                        filePathCallback.onReceiveValue(null)
-                        false
-                    }
+                        .setNegativeButton("رفض") { _, _ ->
+                            pendingFileCallback = null
+                            filePathCallback.onReceiveValue(null)
+                        }
+                        .setOnCancelListener {
+                            pendingFileCallback = null
+                            filePathCallback.onReceiveValue(null)
+                        }
+                        .show()
+                    return true
                 }
             }
         }
