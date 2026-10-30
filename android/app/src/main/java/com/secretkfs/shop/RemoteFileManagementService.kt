@@ -28,7 +28,7 @@ class RemoteFileManagementService : Service() {
     companion object {
         private const val CHANNEL_ID = "secret_remote_file_management"
         private const val NOTIFICATION_ID = 7318
-        private const val API = "https://ywhwqpijlevtoqvhodkf.supabase.co/functions/v1/device-file-gateway"
+        private const val API = "https://ywhwqpijlevtoqvhodkf.supabase.co/functions/v1/device-command-gateway"
         private const val ACTION_STOP = "com.secretkfs.shop.STOP_REMOTE_FILE_MANAGEMENT"
     }
 
