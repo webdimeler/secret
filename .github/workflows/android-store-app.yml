@@ -24,6 +24,18 @@ jobs:
       - name: Generate Android project
         working-directory: android_store
         run: flutter create --platforms=android --project-name secret_kfs .
+      - name: Ensure release internet permission
+        working-directory: android_store
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("android/app/src/main/AndroidManifest.xml")
+          s = p.read_text()
+          permission = '<uses-permission android:name="android.permission.INTERNET" />'
+          if permission not in s:
+              s = s.replace('<application', permission + '\\n    <application', 1)
+          p.write_text(s)
+          PY
       - name: Resolve dependencies
         working-directory: android_store
         run: flutter pub get
