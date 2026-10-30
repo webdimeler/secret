@@ -277,6 +277,7 @@ class MainActivity : Activity() {
                 try {
                     contentResolver.takePersistableUriPermission(uri, data.flags and (Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION))
                 } catch (_: Exception) {}
+                getSharedPreferences("secret_storage", MODE_PRIVATE).edit().putString("selected_tree_uri", uri.toString()).apply()
                 sendSelectedFolderIndex(uri)
             } else {
                 webView.evaluateJavascript("window.onStorageBridgeError && window.onStorageBridgeError('لم يتم اختيار مجلد.')", null)
