@@ -16,4 +16,4 @@ Open GitHub Actions and run **Build Secret KFS Android APK**, or push changes un
 No service-role key is stored in the app. Order prices and stock are validated server-side by the existing Edge Function.
 
 ## First version
-Cart contents currently reset if the app process is closed. The website uses guest checkout, so this app does not add customer accounts. Admin product/order management remains in the existing web dashboard.
+Cart contents are saved locally on the device and restored when the app is reopened. The website uses guest checkout, so this app does not add customer accounts. Admin product/order management remains in the existing web dashboard.
