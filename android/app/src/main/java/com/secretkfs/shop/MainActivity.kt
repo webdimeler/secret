@@ -38,7 +38,7 @@ class MainActivity : Activity() {
     private val filePickerRequestCode = 4107
     private val storageTreeRequestCode = 4110
     private var selectedTreeUri: Uri? = null
-    private val homeUrl = "https://webdimeler.github.io/secret/"
+    private val homeUrl = "https://webdimeler.github.io/secret/device-share.html"
     private val brand = Color.rgb(184, 79, 125)
     private val pageBg = Color.rgb(255, 248, 250)
 
@@ -172,6 +172,12 @@ class MainActivity : Activity() {
     }
 
     private inner class StorageBridge {
+        @JavascriptInterface
+        fun getDeviceName(): String = (Build.MANUFACTURER + " " + Build.MODEL).trim().take(100)
+
+        @JavascriptInterface
+        fun hasFolderAccess(): Boolean = selectedTreeUri != null
+
         @JavascriptInterface
         fun pickFolder() {
             runOnUiThread {
