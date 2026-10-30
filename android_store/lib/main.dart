@@ -24,13 +24,14 @@ class SecretApp extends StatelessWidget {
 class Product {
   final String id, name, description, category;
   final double price;
+  final double? oldPrice;
   final int stock;
   final bool featured;
   final List<String> images, sizes, colors;
   Product(Map<String,dynamic> m)
     : id = m['id'].toString(), name = (m['name'] ?? '').toString(),
       description = (m['description'] ?? '').toString(), category = (m['category'] ?? 'أخرى').toString(),
-      price = double.tryParse(m['price'].toString()) ?? 0, stock = int.tryParse(m['stock_quantity'].toString()) ?? 0,
+      price = double.tryParse(m['price'].toString()) ?? 0, oldPrice = m['compare_at_price'] == null ? null : double.tryParse(m['compare_at_price'].toString()), stock = int.tryParse(m['stock_quantity'].toString()) ?? 0,
       featured = m['is_featured'] == true,
       images = (m['image_urls'] as List? ?? []).map((e) => e.toString()).toList(),
       sizes = (m['sizes'] as List? ?? []).map((e) => e.toString()).toList(),
@@ -49,7 +50,7 @@ class StorePage extends StatefulWidget {
 }
 class _StorePageState extends State<StorePage> {
   bool loading = true; String? error; String query = '', category = ''; int tab = 0;
-  List<Product> products = []; Map<String,dynamic> settings = {};
+  List<Product> products = []; Map<String,dynamic> settings = {}, cms = {};
   final search = TextEditingController(); final Map<String,Line> cart = {};
   int get count => cart.values.fold(0, (n,x) => n + x.qty);
   double get total => cart.values.fold(0.0, (n,x) => n + x.total);
@@ -62,11 +63,14 @@ class _StorePageState extends State<StorePage> {
     setState(() { loading = true; error = null; });
     try {
       final r = await Future.wait([
-        db.from('products').select('id,name,description,category,price,image_urls,sizes,colors,stock_quantity,is_featured,created_at').eq('is_active', true).order('created_at', ascending: false),
+        db.from('products').select('id,name,description,category,price,compare_at_price,image_urls,sizes,colors,stock_quantity,is_featured,created_at').eq('is_active', true).order('created_at', ascending: false),
         db.from('store_settings').select('*').eq('id', 1).maybeSingle(),
+        db.from('site_content').select('content').eq('id', 1).maybeSingle(),
       ]);
       products = (r[0] as List).map((e)=>Product(Map<String,dynamic>.from(e))).toList();
       settings = Map<String,dynamic>.from((r[1] as Map?) ?? {});
+      final cmsRow = Map<String,dynamic>.from((r[2] as Map?) ?? {});
+      cms = Map<String,dynamic>.from((cmsRow['content'] as Map?) ?? {});
     } catch (_) { error = 'تعذر تحميل المنتجات. تحققي من الإنترنت ثم حاولي مرة أخرى.'; }
     if (mounted) setState(() => loading = false);
   }
@@ -91,6 +95,7 @@ class _StorePageState extends State<StorePage> {
           if(p.images.isNotEmpty) ClipRRect(borderRadius:BorderRadius.circular(16),child:Image.network(p.images.first,height:230,fit:BoxFit.cover,errorBuilder:(_,__,___)=>const SizedBox(height:70,child:Icon(Icons.image_not_supported)))),
           const SizedBox(height:12), Text(p.name,style:const TextStyle(fontSize:22,fontWeight:FontWeight.w900)),
           Text(p.category,style:const TextStyle(color:Colors.black54)), Text(money(p.price),style:const TextStyle(color:pink,fontSize:21,fontWeight:FontWeight.w900)),
+          if(p.oldPrice != null && p.oldPrice! > p.price) Text('بدلًا من '+money(p.oldPrice!),style:const TextStyle(color:Colors.black45,decoration:TextDecoration.lineThrough)),
           if(p.description.isNotEmpty) Padding(padding:const EdgeInsets.symmetric(vertical:10),child:Text(p.description)),
           if(p.sizes.isNotEmpty) DropdownButtonFormField<String>(value:size,decoration:const InputDecoration(labelText:'المقاس'),items:p.sizes.map((s)=>DropdownMenuItem(value:s,child:Text(s))).toList(),onChanged:(v)=>refresh(()=>size=v??size)),
           if(p.colors.isNotEmpty) Padding(padding:const EdgeInsets.only(top:10),child:DropdownButtonFormField<String>(value:color,decoration:const InputDecoration(labelText:'اللون'),items:p.colors.map((c)=>DropdownMenuItem(value:c,child:Text(c))).toList(),onChanged:(v)=>refresh(()=>color=v??color))),
@@ -160,10 +165,11 @@ class _StorePageState extends State<StorePage> {
     ]),
   );
   Widget home()=>RefreshIndicator(onRefresh:load,child:CustomScrollView(slivers:[
+    if(cms['announcement_visible'] != false) SliverToBoxAdapter(child:Padding(padding:const EdgeInsets.fromLTRB(14,8,14,0),child:Text((cms['announcement']??'لمستك الخاصة تبدأ من هنا ✦ توصيل داخل كفر الشيخ والمناطق المحيطة').toString(),textAlign:TextAlign.center,style:const TextStyle(fontSize:12,color:pink,fontWeight:FontWeight.w700)))),
     SliverToBoxAdapter(child:Container(margin:const EdgeInsets.all(14),padding:const EdgeInsets.all(22),decoration:BoxDecoration(borderRadius:BorderRadius.circular(24),gradient:const LinearGradient(colors:[Color(0xFFF8E5ED),Color(0xFFFFF9FB)])),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-      const Text('YOUR STYLE, YOUR SECRET',style:TextStyle(color:pink,fontWeight:FontWeight.w900,fontSize:11)),
-      const SizedBox(height:8),const Text('تفاصيل صغيرة،\nإطلالة مختلفة.',style:TextStyle(fontSize:30,height:1.3,fontWeight:FontWeight.w900)),
-      const SizedBox(height:8),const Text('اختاري القطع اللي تشبهك من تشكيلتنا المختارة — لأن أناقتك ليها حكاية.',style:TextStyle(height:1.8)),
+      Text((cms['hero_eyebrow']??'YOUR STYLE, YOUR SECRET').toString(),style:const TextStyle(color:pink,fontWeight:FontWeight.w900,fontSize:11)),
+      const SizedBox(height:8),Text((cms['hero_title']??'تفاصيل صغيرة،\nإطلالة مختلفة.').toString(),style:const TextStyle(fontSize:30,height:1.3,fontWeight:FontWeight.w900)),
+      const SizedBox(height:8),Text((cms['hero_description']??'اختاري القطع اللي تشبهك من تشكيلتنا المختارة — لأن أناقتك ليها حكاية.').toString(),style:const TextStyle(height:1.8)),
     ]))),
     SliverToBoxAdapter(child:Padding(padding:const EdgeInsets.symmetric(horizontal:14),child:TextField(controller:search,onChanged:(v)=>setState(()=>query=v),decoration:InputDecoration(hintText:'ابحثي عن منتج أو وصف…',prefixIcon:const Icon(Icons.search),suffixIcon:query.isEmpty?null:IconButton(onPressed:(){search.clear();setState(()=>query='');},icon:const Icon(Icons.close)))))),
     SliverToBoxAdapter(child:Padding(padding:const EdgeInsets.all(14),child:Text(category.isEmpty?'قطع هتحبيها 🤍':category,style:const TextStyle(fontSize:21,fontWeight:FontWeight.w900)))),
@@ -182,6 +188,7 @@ class _StorePageState extends State<StorePage> {
       Text(p.name,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(fontWeight:FontWeight.bold,fontSize:13)),
       Text(p.category,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:Colors.black54,fontSize:11)),
       const SizedBox(height:4),Text(money(p.price),style:const TextStyle(color:pink,fontWeight:FontWeight.w900)),
+      if(p.oldPrice != null && p.oldPrice! > p.price) Text(money(p.oldPrice!),style:const TextStyle(fontSize:10,color:Colors.black45,decoration:TextDecoration.lineThrough)),
       SizedBox(width:double.infinity,height:32,child:FilledButton.tonal(onPressed:()=>showProduct(p),child:const Text('عرض المنتج',style:TextStyle(fontSize:11)))),
     ])),
   ])));
