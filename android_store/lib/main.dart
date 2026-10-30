@@ -62,7 +62,56 @@ class _StorePageState extends State<StorePage> {
   List<String> get categories => products.map((p)=>p.category).toSet().toList()..sort();
   List<Product> get filtered => products.where((p) => (category.isEmpty || p.category == category) && (query.isEmpty || (p.name+' '+p.category+' '+p.description).toLowerCase().contains(query.toLowerCase()))).toList();
 
-  @override void initState() { super.initState(); load(); }
+
+  List<Map<String,dynamic>> orderHistory = [];
+  static const orderHistoryKey = 'secret_order_history_v1';
+  Future<void> loadOrderHistory() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(orderHistoryKey);
+    if (raw != null) {
+      try { orderHistory = (jsonDecode(raw) as List).map((e)=>Map<String,dynamic>.from(e as Map)).toList(); }
+      catch (_) { orderHistory = []; }
+    }
+    final now = DateTime.now();
+    orderHistory = orderHistory.where((o) {
+      final stamp = DateTime.tryParse((o['created_at'] ?? '').toString());
+      if (stamp == null) return true;
+      final age = now.difference(stamp).inDays;
+      final status = (o['status'] ?? 'new').toString().toLowerCase();
+      if (status == 'delivered') return age < 30;
+      return age < 5;
+    }).toList();
+    await saveOrderHistory();
+  }
+  Future<void> saveOrderHistory() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(orderHistoryKey, jsonEncode(orderHistory));
+  }
+  Widget ordersPage() => RefreshIndicator(
+    onRefresh: loadOrderHistory,
+    child: orderHistory.isEmpty
+      ? ListView(children: const [SizedBox(height:100), Icon(Icons.receipt_long_outlined,size:58,color:pink), SizedBox(height:12), Center(child:Text('لا توجد طلبات محفوظة حتى الآن',style:TextStyle(fontWeight:FontWeight.w700)))])
+      : ListView.separated(
+        padding: const EdgeInsets.all(16),
+        itemCount: orderHistory.length,
+        separatorBuilder: (_,__)=>const SizedBox(height:10),
+        itemBuilder:(context,index) {
+          final o=orderHistory[index];
+          final items=(o['items'] as List? ?? []);
+          final status=(o['status']??'new').toString();
+          const labels={'new':'قيد المراجعة','confirmed':'تم التأكيد','preparing':'قيد التجهيز','out_for_delivery':'خرج للتوصيل','delivered':'تم التسليم','cancelled':'ملغي'};
+          final date=DateTime.tryParse((o['created_at']??'').toString());
+          return Card(child:Padding(padding:const EdgeInsets.all(14),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+            Row(children:[const Icon(Icons.receipt_long,color:plum),const SizedBox(width:8),Expanded(child:Text('طلب #${o['order_number']??'—'}',style:const TextStyle(fontWeight:FontWeight.w900,fontSize:16))),Text(labels[status]??status,style:const TextStyle(color:pink,fontWeight:FontWeight.w800))]),
+            if(date!=null) Padding(padding:const EdgeInsets.only(top:5),child:Text('${date.day}/${date.month}/${date.year}',style:const TextStyle(color:Colors.black54))),
+            const Divider(),
+            ...items.map((it){final m=Map<String,dynamic>.from(it as Map);return Padding(padding:const EdgeInsets.symmetric(vertical:3),child:Text('${m['name']??'منتج'} × ${m['quantity']??1}${(m['size']??'').toString().isNotEmpty?' · مقاس ${m['size']}':''}${(m['color']??'').toString().isNotEmpty?' · ${m['color']}':''}'));}),
+            Align(alignment:Alignment.centerLeft,child:Text('الإجمالي: ${money((o['total']??0) as num)}',style:const TextStyle(fontWeight:FontWeight.w900,color:plum))),
+          ])));
+        }),
+  );
+
+  @override void initState() { super.initState(); load(); loadOrderHistory(); }
   @override void dispose() { search.dispose(); super.dispose(); }
   Future<void> load() async {
     setState(() { loading = true; error = null; });
@@ -165,6 +214,14 @@ class _StorePageState extends State<StorePage> {
               if(response.status>=400||data['error']!=null)throw Exception(data['error']??'تعذر تسجيل الطلب');
               final order=Map<String,dynamic>.from(data['order'] as Map? ?? {});
               final number=(order['order_number']??'—').toString();
+              orderHistory.insert(0, {
+                'order_number': number,
+                'created_at': (order['created_at'] ?? DateTime.now().toIso8601String()).toString(),
+                'total': (order['total'] ?? total),
+                'status': (order['status'] ?? 'new').toString(),
+                'items': cart.values.map((x)=>{'name':x.p.name,'quantity':x.qty,'size':x.size,'color':x.color,'price':x.p.price}).toList(),
+              });
+              await saveOrderHistory();
               if(!mounted)return; setState(()=>cart.clear()); saveCart(); Navigator.pop(ctx);
               await showDialog<void>(context:context,builder:(d)=>AlertDialog(
                 icon:const Icon(Icons.check_circle_outline,color:Colors.green,size:42),title:const Text('تم استلام طلبك ♡'),
@@ -190,12 +247,13 @@ class _StorePageState extends State<StorePage> {
       const SizedBox(height:5),
       const Text('K F S  •  YOUR STYLE, YOUR STORY',style:TextStyle(fontSize:9,color:Color(0xFF82717B),letterSpacing:1.7,fontWeight:FontWeight.w600)),
     ]),actions:[IconButton(onPressed:load,tooltip:'تحديث المنتجات',icon:const Icon(Icons.refresh_rounded))]),
-    body:IndexedStack(index:tab,children:[home(),categoriesPage(),cartPage(),contactPage()]),
+    body:IndexedStack(index:tab,children:[home(),categoriesPage(),cartPage(),contactPage(),ordersPage()]),
     bottomNavigationBar:NavigationBar(selectedIndex:tab,onDestinationSelected:(v)=>setState(()=>tab=v),destinations:[
       const NavigationDestination(icon:Icon(Icons.storefront_outlined),label:'المتجر'),
       const NavigationDestination(icon:Icon(Icons.grid_view_outlined),label:'الأقسام'),
       NavigationDestination(icon:Badge(isLabelVisible:count>0,label:Text(count.toString()),child:const Icon(Icons.shopping_bag_outlined)),label:'السلة'),
       const NavigationDestination(icon:Icon(Icons.chat_bubble_outline),label:'تواصل'),
+      const NavigationDestination(icon:Icon(Icons.receipt_long_outlined),label:'طلباتي'),
     ]),
   );
   Widget home()=>RefreshIndicator(onRefresh:load,child:CustomScrollView(slivers:[
