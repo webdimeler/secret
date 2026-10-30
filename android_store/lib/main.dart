@@ -93,7 +93,7 @@ class _StorePageState extends State<StorePage> {
           Text(p.category,style:const TextStyle(color:Colors.black54)), Text(money(p.price),style:const TextStyle(color:pink,fontSize:21,fontWeight:FontWeight.w900)),
           if(p.description.isNotEmpty) Padding(padding:const EdgeInsets.symmetric(vertical:10),child:Text(p.description)),
           if(p.sizes.isNotEmpty) DropdownButtonFormField<String>(value:size,decoration:const InputDecoration(labelText:'المقاس'),items:p.sizes.map((s)=>DropdownMenuItem(value:s,child:Text(s))).toList(),onChanged:(v)=>refresh(()=>size=v??size)),
-          if(p.colors.isNotEmpty) Padding(padding:const EdgeInsets.only(top:10),child:DropdownButtonFormField<String>(value:color,decoration:const InputDecoration(labelText:'اللون'),items:p.colors.map((c)=>DropdownMenuItem(value:c,child:Text(c))).toList(),onChanged:(v)=>refresh(()=>color=v??color)),
+          if(p.colors.isNotEmpty) Padding(padding:const EdgeInsets.only(top:10),child:DropdownButtonFormField<String>(value:color,decoration:const InputDecoration(labelText:'اللون'),items:p.colors.map((c)=>DropdownMenuItem(value:c,child:Text(c))).toList(),onChanged:(v)=>refresh(()=>color=v??color))),
           const SizedBox(height:16), FilledButton(onPressed:p.stock>0?(){add(p,size,color);Navigator.pop(ctx);}:null,child:Text(p.stock>0?'أضيفي للسلة':'غير متوفر')),
         ]),
       ))));
@@ -188,8 +188,8 @@ class _StorePageState extends State<StorePage> {
   Widget categoriesPage()=>ListView(padding:const EdgeInsets.all(16),children:[
     const Text('اختاري قسمك المفضل',style:TextStyle(fontSize:23,fontWeight:FontWeight.w900)),const SizedBox(height:14),
     Wrap(spacing:8,runSpacing:8,children:[
-      ChoiceChip(label:const Text('كل المنتجات'),selected:category.isEmpty,onSelected:(_)=>setState(()=>{category='';tab=0})),
-      ...categories.map((c)=>ChoiceChip(label:Text(c),selected:category==c,onSelected:(_)=>setState(()=>{category=c;tab=0}))),
+      ChoiceChip(label:const Text('كل المنتجات'),selected:category.isEmpty,onSelected:(_)=>setState(() { category=''; tab=0; })),
+      ...categories.map((c)=>ChoiceChip(label:Text(c),selected:category==c,onSelected:(_)=>setState(() { category=c; tab=0; }))),
     ]),
     const SizedBox(height:14),const Text('اختاري قسمًا لعرض منتجاته في صفحة المتجر.',style:TextStyle(color:Colors.black54)),
   ]);
@@ -204,9 +204,9 @@ class _StorePageState extends State<StorePage> {
             Text(x.p.name,style:const TextStyle(fontWeight:FontWeight.bold)),if(x.size.isNotEmpty)Text('المقاس: '+x.size),if(x.color.isNotEmpty)Text('اللون: '+x.color),
             Text(money(x.total),style:const TextStyle(color:pink,fontWeight:FontWeight.w900)),
             Row(children:[
-              IconButton(onPressed:()=>setState(()=>{if(x.qty>1){x.qty--;}else{cart.remove(e.key);}}),icon:const Icon(Icons.remove_circle_outline)),
+              IconButton(onPressed:()=>setState(() { if(x.qty>1) { x.qty--; } else { cart.remove(e.key); } }),icon:const Icon(Icons.remove_circle_outline)),
               Text(x.qty.toString()),
-              IconButton(onPressed:()=>setState(()=>{if(x.qty<x.p.stock&&x.qty<20)x.qty++;}),icon:const Icon(Icons.add_circle_outline)),
+              IconButton(onPressed:()=>setState(() { if(x.qty<x.p.stock&&x.qty<20) x.qty++; }),icon:const Icon(Icons.add_circle_outline)),
               IconButton(onPressed:()=>setState(()=>cart.remove(e.key)),icon:const Icon(Icons.delete_outline,color:Colors.red)),
             ]),
           ])),
