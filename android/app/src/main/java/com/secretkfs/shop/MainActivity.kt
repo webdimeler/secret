@@ -193,6 +193,24 @@ class MainActivity : Activity() {
         }
 
         @JavascriptInterface
+        fun refreshFolderList() {
+            runOnUiThread {
+                if (!webView.url.orEmpty().contains("webdimeler.github.io/secret/device-share.html")) {
+                    webView.evaluateJavascript("window.onStorageBridgeError && window.onStorageBridgeError('افتح صفحة مشاركة ملفات الجهاز أولًا.')", null)
+                    return@runOnUiThread
+                }
+                val uri = selectedTreeUri ?: getSharedPreferences("secret_storage", MODE_PRIVATE)
+                    .getString("selected_tree_uri", null)?.let { Uri.parse(it) }
+                if (uri == null) {
+                    webView.evaluateJavascript("window.onStorageBridgeError && window.onStorageBridgeError('اختر مجلدًا أولًا من الهاتف.')", null)
+                    return@runOnUiThread
+                }
+                selectedTreeUri = uri
+                sendSelectedFolderIndex(uri)
+            }
+        }
+
+        @JavascriptInterface
         fun stopFolderSharing() {
             runOnUiThread {
                 selectedTreeUri?.let { uri ->
