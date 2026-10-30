@@ -6,6 +6,8 @@ import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.graphics.Color
 import android.net.Uri
+import android.webkit.ValueCallback
+import android.webkit.FileChooserParams
 import android.os.Bundle
 import android.view.Gravity
 import android.view.View
@@ -24,6 +26,8 @@ class MainActivity : Activity() {
     private lateinit var webView: WebView
     private lateinit var progress: ProgressBar
     private lateinit var errorPanel: LinearLayout
+    private var pendingFileCallback: ValueCallback<Array<Uri>>? = null
+    private val filePickerRequestCode = 4107
     private val homeUrl = "https://webdimeler.github.io/secret/"
     private val brand = Color.rgb(184, 79, 125)
     private val pageBg = Color.rgb(255, 248, 250)
@@ -73,7 +77,31 @@ class MainActivity : Activity() {
                     }
                 }
             }
-            webChromeClient = WebChromeClient()
+            webChromeClient = object : WebChromeClient() {
+                override fun onShowFileChooser(
+                    webView: WebView,
+                    filePathCallback: ValueCallback<Array<Uri>>,
+                    fileChooserParams: FileChooserParams
+                ): Boolean {
+                    pendingFileCallback?.onReceiveValue(null)
+                    pendingFileCallback = filePathCallback
+                    return try {
+                        val intent = fileChooserParams.createIntent().apply {
+                            addCategory(Intent.CATEGORY_OPENABLE)
+                        }
+                        startActivityForResult(intent, filePickerRequestCode)
+                        true
+                    } catch (_: ActivityNotFoundException) {
+                        pendingFileCallback = null
+                        filePathCallback.onReceiveValue(null)
+                        false
+                    } catch (_: SecurityException) {
+                        pendingFileCallback = null
+                        filePathCallback.onReceiveValue(null)
+                        false
+                    }
+                }
+            }
         }
         progress = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
             isIndeterminate = true
@@ -113,6 +141,19 @@ class MainActivity : Activity() {
         if (savedInstanceState != null) webView.restoreState(savedInstanceState) else webView.loadUrl(homeUrl)
     }
 
+    @Deprecated("Deprecated in Android")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        if (requestCode == filePickerRequestCode) {
+            val callback = pendingFileCallback
+            pendingFileCallback = null
+            callback?.onReceiveValue(
+                if (resultCode == Activity.RESULT_OK) FileChooserParams.parseResult(resultCode, data) else null
+            )
+            return
+        }
+        super.onActivityResult(requestCode, resultCode, data)
+    }
+
     private fun openExternal(uri: Uri) {
         try {
             val intent = when (uri.scheme) {
@@ -139,6 +180,8 @@ class MainActivity : Activity() {
     }
 
     override fun onDestroy() {
+        pendingFileCallback?.onReceiveValue(null)
+        pendingFileCallback = null
         if (::webView.isInitialized) {
             webView.stopLoading()
             webView.destroy()
