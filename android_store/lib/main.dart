@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -71,8 +73,33 @@ class _StorePageState extends State<StorePage> {
       settings = Map<String,dynamic>.from((r[1] as Map?) ?? {});
       final cmsRow = Map<String,dynamic>.from((r[2] as Map?) ?? {});
       cms = Map<String,dynamic>.from((cmsRow['content'] as Map?) ?? {});
+      await restoreCart();
     } catch (_) { error = 'تعذر تحميل المنتجات. تحققي من الإنترنت ثم حاولي مرة أخرى.'; }
     if (mounted) setState(() => loading = false);
+  }
+  Future<void> restoreCart() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString('secret_cart_v1');
+      if (raw == null) return;
+      final saved = jsonDecode(raw) as List;
+      for (final item in saved) {
+        final m = Map<String,dynamic>.from(item as Map);
+        final p = products.where((x) => x.id == m['product_id']).firstOrNull;
+        if (p == null || p.stock < 1) continue;
+        final qty = int.tryParse('${m['quantity']}') ?? 1;
+        if (qty < 1) continue;
+        final size = (m['size'] ?? '').toString(), color = (m['color'] ?? '').toString();
+        final key = p.id+'|'+size+'|'+color;
+        cart[key] = Line(p,size,color,qty: qty > p.stock ? p.stock : (qty > 20 ? 20 : qty));
+      }
+    } catch (_) {}
+  }
+  Future<void> saveCart() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('secret_cart_v1', jsonEncode(cart.values.map((x) => {'product_id':x.p.id,'quantity':x.qty,'size':x.size,'color':x.color}).toList()));
+    } catch (_) {}
   }
   Future<void> track(String event, {String? productId}) async {
     try { await db.from('site_analytics').insert({'event_name':event,'page_path':'/android','product_id':productId}); } catch (_) {}
@@ -84,6 +111,7 @@ class _StorePageState extends State<StorePage> {
     else if (cart[key]!.qty < p.stock && cart[key]!.qty < 20) { cart[key]!.qty++; }
     else { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('وصلتِ للكمية المتاحة'))); return; }
     setState(() {});
+    saveCart();
   }
   Future<void> showProduct(Product p) async {
     track('product_click', productId:p.id);
@@ -133,7 +161,7 @@ class _StorePageState extends State<StorePage> {
               if(response.status>=400||data['error']!=null)throw Exception(data['error']??'تعذر تسجيل الطلب');
               final order=Map<String,dynamic>.from(data['order'] as Map? ?? {});
               final number=(order['order_number']??'—').toString();
-              if(!mounted)return; setState(()=>cart.clear()); Navigator.pop(ctx);
+              if(!mounted)return; setState(()=>cart.clear()); saveCart(); Navigator.pop(ctx);
               await showDialog<void>(context:context,builder:(d)=>AlertDialog(
                 icon:const Icon(Icons.check_circle_outline,color:Colors.green,size:42),title:const Text('تم استلام طلبك ♡'),
                 content:Text('رقم الطلب: #'+number+'\nالإجمالي المبدئي: '+money((order['total'] as num?)?.toDouble()??0)+'\n'+(data['message']??'').toString()),
@@ -211,10 +239,10 @@ class _StorePageState extends State<StorePage> {
             Text(x.p.name,style:const TextStyle(fontWeight:FontWeight.bold)),if(x.size.isNotEmpty)Text('المقاس: '+x.size),if(x.color.isNotEmpty)Text('اللون: '+x.color),
             Text(money(x.total),style:const TextStyle(color:pink,fontWeight:FontWeight.w900)),
             Row(children:[
-              IconButton(onPressed:()=>setState(() { if(x.qty>1) { x.qty--; } else { cart.remove(e.key); } }),icon:const Icon(Icons.remove_circle_outline)),
+              IconButton(onPressed:()=>setState(() { if(x.qty>1) { x.qty--; } else { cart.remove(e.key); } }); saveCart(),icon:const Icon(Icons.remove_circle_outline)),
               Text(x.qty.toString()),
-              IconButton(onPressed:()=>setState(() { if(x.qty<x.p.stock&&x.qty<20) x.qty++; }),icon:const Icon(Icons.add_circle_outline)),
-              IconButton(onPressed:()=>setState(()=>cart.remove(e.key)),icon:const Icon(Icons.delete_outline,color:Colors.red)),
+              IconButton(onPressed:()=>setState(() { if(x.qty<x.p.stock&&x.qty<20) x.qty++; }); saveCart(),icon:const Icon(Icons.add_circle_outline)),
+              IconButton(onPressed:()=>setState(()=>cart.remove(e.key)); saveCart(),icon:const Icon(Icons.delete_outline,color:Colors.red)),
             ]),
           ])),
         ])));}),
