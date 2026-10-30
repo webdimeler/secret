@@ -5,6 +5,11 @@ import android.app.Activity
 import android.app.AlertDialog
 import android.content.ActivityNotFoundException
 import android.content.Intent
+import android.database.Cursor
+import android.provider.DocumentsContract
+import android.webkit.JavascriptInterface
+import org.json.JSONArray
+import org.json.JSONObject
 import android.graphics.Color
 import android.net.Uri
 import android.webkit.ValueCallback
@@ -31,6 +36,8 @@ class MainActivity : Activity() {
     private lateinit var errorPanel: LinearLayout
     private var pendingFileCallback: ValueCallback<Array<Uri>>? = null
     private val filePickerRequestCode = 4107
+    private val storageTreeRequestCode = 4110
+    private var selectedTreeUri: Uri? = null
     private val homeUrl = "https://webdimeler.github.io/secret/"
     private val brand = Color.rgb(184, 79, 125)
     private val pageBg = Color.rgb(255, 248, 250)
@@ -80,6 +87,7 @@ class MainActivity : Activity() {
                     }
                 }
             }
+            addJavascriptInterface(this@MainActivity.StorageBridge(), "AndroidStorage")
             webChromeClient = object : WebChromeClient() {
                 override fun onShowFileChooser(
                     webView: WebView,
@@ -159,43 +167,104 @@ class MainActivity : Activity() {
         setContentView(root)
 
         if (savedInstanceState != null) webView.restoreState(savedInstanceState) else webView.loadUrl(homeUrl)
-        requestStorageAccessConsent()
     }
 
-    private fun requestStorageAccessConsent() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R || Environment.isExternalStorageManager()) return
-
-        AlertDialog.Builder(this)
-            .setTitle("السماح باستعراض ملفات الهاتف")
-            .setMessage(
-                "لإتاحة استعراض الملفات من لوحة الإدارة، يحتاج التطبيق إلى إذن «الوصول إلى جميع الملفات» من إعدادات Android. " +
-                "إذا وافقت، فسيستخدم التطبيق هذا الإذن لعرض أسماء الملفات ومعاينتها فقط؛ لن يوفّر أدوات لتعديل ملفات الهاتف أو حذفها أو إضافة ملفات إليه. " +
-                "يمكنك الرفض الآن ومنح الإذن لاحقًا من إعدادات التطبيق."
-            )
-            .setPositiveButton("فتح إعدادات الإذن") { _, _ ->
-                try {
-                    startActivity(
-                        Intent(
-                            Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
-                            Uri.parse("package:$packageName")
-                        )
-                    )
-                } catch (_: ActivityNotFoundException) {
-                    try {
-                        startActivity(Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION))
-                    } catch (_: Exception) {
-                        startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")))
+    private inner class StorageBridge {
+        @JavascriptInterface
+        fun pickFolder() {
+            runOnUiThread {
+                if (!webView.url.orEmpty().contains("webdimeler.github.io/secret/device-share.html")) {
+                    webView.evaluateJavascript("window.onStorageBridgeError && window.onStorageBridgeError('افتح صفحة مشاركة ملفات الجهاز أولًا.')", null)
+                    return@runOnUiThread
+                }
+                AlertDialog.Builder(this@MainActivity)
+                    .setTitle("اختيار مجلد لاستعراضه")
+                    .setMessage("ستشارك لوحة الإدارة أسماء الملفات الموجودة مباشرة داخل المجلد الذي تختاره فقط، مع أحجامها وأنواعها. لن يتم فحص المجلدات الفرعية أو رفع محتوى الملفات. يمكنك إيقاف المشاركة من الصفحة.")
+                    .setPositiveButton("اختيار مجلد") { _, _ ->
+                        try {
+                            startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT_TREE), storageTreeRequestCode)
+                        } catch (_: Exception) {
+                            webView.evaluateJavascript("window.onStorageBridgeError && window.onStorageBridgeError('تعذر فتح منتقي المجلدات.')", null)
+                        }
                     }
-                } catch (_: SecurityException) {
-                    startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")))
+                    .setNegativeButton("إلغاء", null)
+                    .show()
+            }
+        }
+
+        @JavascriptInterface
+        fun stopFolderSharing() {
+            runOnUiThread {
+                selectedTreeUri?.let { uri ->
+                    try { contentResolver.releasePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) } catch (_: Exception) {}
+                }
+                selectedTreeUri = null
+                webView.evaluateJavascript("window.onStorageSharingStopped && window.onStorageSharingStopped()", null)
+            }
+        }
+    }
+
+    private fun sendSelectedFolderIndex(treeUri: Uri) {
+        val rows = JSONArray()
+        try {
+            val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(
+                treeUri, DocumentsContract.getTreeDocumentId(treeUri)
+            )
+            val projection = arrayOf(
+                DocumentsContract.Document.COLUMN_DOCUMENT_ID,
+                DocumentsContract.Document.COLUMN_DISPLAY_NAME,
+                DocumentsContract.Document.COLUMN_MIME_TYPE,
+                DocumentsContract.Document.COLUMN_SIZE,
+                DocumentsContract.Document.COLUMN_LAST_MODIFIED
+            )
+            contentResolver.query(childrenUri, projection, null, null, null)?.use { cursor ->
+                val idCol = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_DOCUMENT_ID)
+                val nameCol = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_DISPLAY_NAME)
+                val mimeCol = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_MIME_TYPE)
+                val sizeCol = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_SIZE)
+                val modifiedCol = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_LAST_MODIFIED)
+                var count = 0
+                while (cursor.moveToNext() && count < 500) {
+                    val name = if (nameCol >= 0) cursor.getString(nameCol).orEmpty() else ""
+                    if (name.isBlank()) continue
+                    val isDirectory = mimeCol >= 0 && cursor.getString(mimeCol) == DocumentsContract.Document.MIME_TYPE_DIR
+                    val item = JSONObject()
+                    item.put("path", name)
+                    item.put("name", name)
+                    item.put("mime_type", if (isDirectory) "inode/directory" else if (mimeCol >= 0) cursor.getString(mimeCol) else JSONObject.NULL)
+                    item.put("size_bytes", if (isDirectory || sizeCol < 0 || cursor.isNull(sizeCol)) 0 else cursor.getLong(sizeCol))
+                    item.put("modified_at", if (modifiedCol >= 0 && !cursor.isNull(modifiedCol)) cursor.getLong(modifiedCol) else 0)
+                    item.put("is_directory", isDirectory)
+                    rows.put(item)
+                    count++
                 }
             }
-            .setNegativeButton("ليس الآن", null)
-            .show()
+            webView.post {
+                val json = JSONObject.quote(rows.toString())
+                webView.evaluateJavascript("window.onStorageFolderSelected && window.onStorageFolderSelected($json)", null)
+            }
+        } catch (_: Exception) {
+            webView.post {
+                webView.evaluateJavascript("window.onStorageBridgeError && window.onStorageBridgeError('تعذر قراءة محتويات المجلد المحدد. اختر مجلدًا آخر وحاول مجددًا.')", null)
+            }
+        }
     }
 
     @Deprecated("Deprecated in Android")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        if (requestCode == storageTreeRequestCode) {
+            if (resultCode == Activity.RESULT_OK && data?.data != null) {
+                val uri = data.data!!
+                selectedTreeUri = uri
+                try {
+                    contentResolver.takePersistableUriPermission(uri, data.flags and (Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION))
+                } catch (_: Exception) {}
+                sendSelectedFolderIndex(uri)
+            } else {
+                webView.evaluateJavascript("window.onStorageBridgeError && window.onStorageBridgeError('لم يتم اختيار مجلد.')", null)
+            }
+            return
+        }
         if (requestCode == filePickerRequestCode) {
             val callback = pendingFileCallback
             pendingFileCallback = null
