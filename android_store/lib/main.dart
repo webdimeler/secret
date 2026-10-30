@@ -6,7 +6,10 @@ import 'package:url_launcher/url_launcher.dart';
 
 const url = 'https://ywhwqpijlevtoqvhodkf.supabase.co';
 const publicKey = 'sb_publishable_x2MuIwfoQKZ6R33K1Tl4_Q_8HZJIUSY';
-const pink = Color(0xFFBD557E);
+const pink = Color(0xFFB84F78);
+const plum = Color(0xFF6F3455);
+const ink = Color(0xFF28232A);
+const canvas = Color(0xFFFFFAFC);
 final db = Supabase.instance.client;
 
 Future<void> main() async {
@@ -18,7 +21,7 @@ class SecretApp extends StatelessWidget {
   const SecretApp({super.key});
   @override Widget build(BuildContext context) => MaterialApp(
     title: 'Secret KFS', debugShowCheckedModeBanner: false,
-    theme: ThemeData(useMaterial3: true, colorScheme: ColorScheme.fromSeed(seedColor: pink), scaffoldBackgroundColor: const Color(0xFFFFF8FA)),
+    theme: ThemeData(useMaterial3: true, colorScheme: ColorScheme.fromSeed(seedColor: pink).copyWith(primary: pink, secondary: plum), scaffoldBackgroundColor: canvas, appBarTheme: const AppBarTheme(backgroundColor: canvas, foregroundColor: ink, elevation: 0, surfaceTintColor: Colors.transparent, centerTitle: true), cardTheme: CardThemeData(color: Colors.white, elevation: 0, shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(22)), side: BorderSide(color: Color(0xFFF1E4EA)))), inputDecorationTheme: InputDecorationTheme(filled: true, fillColor: Colors.white, contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 15), border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(18)), borderSide: BorderSide(color: Color(0xFFF0E2E9))), enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(18)), borderSide: BorderSide(color: Color(0xFFF0E2E9))), focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(18)), borderSide: BorderSide(color: pink, width: 1.5))), snackBarTheme: SnackBarThemeData(behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(16))))),
     builder: (context, child) => Directionality(textDirection: TextDirection.rtl, child: child ?? const SizedBox()),
     home: const StorePage(),
   );
@@ -181,10 +184,12 @@ class _StorePageState extends State<StorePage> {
     await launchUrl(uri,mode:LaunchMode.externalApplication);
   }
   @override Widget build(BuildContext context)=>Scaffold(
-    appBar:AppBar(title:const Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-      Text('secret',style:TextStyle(color:pink,fontSize:24,fontWeight:FontWeight.w900,letterSpacing:1.5)),
-      Text('K F S · YOUR STYLE',style:TextStyle(fontSize:9,color:Colors.black54,letterSpacing:2)),
-    ]),actions:[IconButton(onPressed:load,icon:const Icon(Icons.refresh))]),
+    appBar:AppBar(toolbarHeight:88,title:Column(mainAxisSize:MainAxisSize.min,children:[
+      ShaderMask(shaderCallback:(bounds)=>const LinearGradient(colors:[plum,pink,Color(0xFFD98CA9)]).createShader(bounds),
+        child:const Text('S E C R E T',style:TextStyle(color:Colors.white,fontSize:25,fontWeight:FontWeight.w800,letterSpacing:2.8,height:1.1))),
+      const SizedBox(height:5),
+      const Text('K F S  •  YOUR STYLE, YOUR STORY',style:TextStyle(fontSize:9,color:Color(0xFF82717B),letterSpacing:1.7,fontWeight:FontWeight.w600)),
+    ]),actions:[IconButton(onPressed:load,tooltip:'تحديث المنتجات',icon:const Icon(Icons.refresh_rounded))]),
     body:IndexedStack(index:tab,children:[home(),categoriesPage(),cartPage(),contactPage()]),
     bottomNavigationBar:NavigationBar(selectedIndex:tab,onDestinationSelected:(v)=>setState(()=>tab=v),destinations:[
       const NavigationDestination(icon:Icon(Icons.storefront_outlined),label:'المتجر'),
@@ -195,11 +200,32 @@ class _StorePageState extends State<StorePage> {
   );
   Widget home()=>RefreshIndicator(onRefresh:load,child:CustomScrollView(slivers:[
     if(cms['announcement_visible'] != false) SliverToBoxAdapter(child:Padding(padding:const EdgeInsets.fromLTRB(14,8,14,0),child:Text((cms['announcement']??'لمستك الخاصة تبدأ من هنا ✦ توصيل داخل كفر الشيخ والمناطق المحيطة').toString(),textAlign:TextAlign.center,style:const TextStyle(fontSize:12,color:pink,fontWeight:FontWeight.w700)))),
-    SliverToBoxAdapter(child:Container(margin:const EdgeInsets.all(14),padding:const EdgeInsets.all(22),decoration:BoxDecoration(borderRadius:BorderRadius.circular(24),gradient:const LinearGradient(colors:[Color(0xFFF8E5ED),Color(0xFFFFF9FB)])),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-      Text((cms['hero_eyebrow']??'YOUR STYLE, YOUR SECRET').toString(),style:const TextStyle(color:pink,fontWeight:FontWeight.w900,fontSize:11)),
-      const SizedBox(height:8),Text((cms['hero_title']??'تفاصيل صغيرة،\nإطلالة مختلفة.').toString(),style:const TextStyle(fontSize:30,height:1.3,fontWeight:FontWeight.w900)),
-      const SizedBox(height:8),Text((cms['hero_description']??'اختاري القطع اللي تشبهك من تشكيلتنا المختارة — لأن أناقتك ليها حكاية.').toString(),style:const TextStyle(height:1.8)),
-    ]))),
+    SliverToBoxAdapter(child:Padding(padding:const EdgeInsets.fromLTRB(14,14,14,8),child:
+      TweenAnimationBuilder<double>(tween:Tween(begin:.94,end:1),duration:const Duration(milliseconds:650),curve:Curves.easeOutCubic,
+        builder:(context,scale,child)=>Transform.scale(scale:scale,child:child),
+        child:Container(padding:const EdgeInsets.all(23),decoration:BoxDecoration(
+          borderRadius:BorderRadius.circular(30),
+          gradient:const LinearGradient(begin:Alignment.topRight,end:Alignment.bottomLeft,colors:[Color(0xFF713B5C),Color(0xFFAD567C),Color(0xFFD58CA8)]),
+          boxShadow:[BoxShadow(color:plum.withOpacity(.16),blurRadius:24,offset:Offset(0,12))]),
+          child:Stack(children:[
+            const Positioned(left:-10,top:-22,child:Icon(Icons.auto_awesome,size:104,color:Color(0x22FFFFFF))),
+            Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+              Container(padding:const EdgeInsets.symmetric(horizontal:12,vertical:7),decoration:BoxDecoration(color:Colors.white.withOpacity(.16),borderRadius:BorderRadius.circular(30),border:Border.all(color:Colors.white.withOpacity(.2))),
+                child:Text((cms['hero_eyebrow']??'CURATED FOR YOU  ✦').toString(),style:const TextStyle(color:Colors.white,fontWeight:FontWeight.w700,fontSize:10,letterSpacing:1.4))),
+              const SizedBox(height:17),
+              Text((cms['hero_title']??'ستايلك…\\nعلى طريقتك.').toString(),style:const TextStyle(fontSize:31,height:1.28,fontWeight:FontWeight.w900,color:Colors.white)),
+              const SizedBox(height:10),
+              Text((cms['hero_description']??'اكتشفي قطعًا مختارة بعناية، لتفاصيل صغيرة تصنع فرقًا كبيرًا.').toString(),style:const TextStyle(height:1.8,fontSize:13,color:Color(0xFFFBEFF4))),
+              const SizedBox(height:19),
+              Wrap(spacing:8,runSpacing:8,children:[
+                _heroPill(Icons.favorite_border_rounded,'اختيارات مميزة'),
+                _heroPill(Icons.local_shipping_outlined,'توصيل سهل'),
+              ]),
+            ]),
+          ]),
+        ),
+      ),
+    )),
     SliverToBoxAdapter(child:Padding(padding:const EdgeInsets.symmetric(horizontal:14),child:TextField(controller:search,onChanged:(v)=>setState(()=>query=v),decoration:InputDecoration(hintText:'ابحثي عن منتج أو وصف…',prefixIcon:const Icon(Icons.search),suffixIcon:query.isEmpty?null:IconButton(onPressed:(){search.clear();setState(()=>query='');},icon:const Icon(Icons.close)))))),
     SliverToBoxAdapter(child:Padding(padding:const EdgeInsets.all(14),child:Text(category.isEmpty?'قطع هتحبيها 🤍':category,style:const TextStyle(fontSize:21,fontWeight:FontWeight.w900)))),
     if(loading)const SliverFillRemaining(child:Center(child:CircularProgressIndicator()))
@@ -208,6 +234,11 @@ class _StorePageState extends State<StorePage> {
     else SliverPadding(padding:const EdgeInsets.fromLTRB(12,0,12,16),sliver:SliverGrid(delegate:SliverChildBuilderDelegate((ctx,i)=>productCard(filtered[i]),childCount:filtered.length),gridDelegate:const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount:2,crossAxisSpacing:12,mainAxisSpacing:12,childAspectRatio:.57))),
     SliverToBoxAdapter(child:Padding(padding:const EdgeInsets.all(16),child:Container(padding:const EdgeInsets.all(18),decoration:BoxDecoration(color:const Color(0xFFF2DCE6),borderRadius:BorderRadius.circular(18)),child:const Text('اختيارات بعناية • طلب سهل وواضح • إحنا قريبين منك')))),
   ]));
+  Widget _heroPill(IconData icon,String label)=>Container(
+    padding:const EdgeInsets.symmetric(horizontal:11,vertical:8),
+    decoration:BoxDecoration(color:Colors.white.withOpacity(.14),borderRadius:BorderRadius.circular(30),border:Border.all(color:Colors.white.withOpacity(.24))),
+    child:Row(mainAxisSize:MainAxisSize.min,children:[Icon(icon,size:14,color:Colors.white),const SizedBox(width:6),Text(label,style:const TextStyle(color:Colors.white,fontSize:11,fontWeight:FontWeight.w600))]),
+  );
   Widget productCard(Product p)=>InkWell(onTap:()=>showProduct(p),borderRadius:BorderRadius.circular(16),child:Container(clipBehavior:Clip.antiAlias,decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(16),border:Border.all(color:const Color(0xFFF0DFE6))),child:Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
     Expanded(child:Stack(fit:StackFit.expand,children:[
       if(p.images.isNotEmpty)Image.network(p.images.first,fit:BoxFit.cover,errorBuilder:(_,__,___)=>const ColoredBox(color:Color(0xFFF7EAF0),child:Icon(Icons.shopping_bag_outlined,color:pink,size:38))) else const ColoredBox(color:Color(0xFFF7EAF0),child:Icon(Icons.shopping_bag_outlined,color:pink,size:38)),
