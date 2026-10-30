@@ -352,3 +352,4 @@ class _StorePageState extends State<StorePage> {
     const SizedBox(height:24),const Text('Secret KFS · YOUR STYLE',textAlign:TextAlign.center,style:TextStyle(color:pink,fontWeight:FontWeight.w900)),
   ]);
 }
+
