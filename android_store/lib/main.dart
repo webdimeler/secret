@@ -85,7 +85,8 @@ class _StorePageState extends State<StorePage> {
       final saved = jsonDecode(raw) as List;
       for (final item in saved) {
         final m = Map<String,dynamic>.from(item as Map);
-        final p = products.where((x) => x.id == m['product_id']).firstOrNull;
+        Product? p;
+        for (final candidate in products) { if (candidate.id == m['product_id']) { p = candidate; break; } }
         if (p == null || p.stock < 1) continue;
         final qty = int.tryParse('${m['quantity']}') ?? 1;
         if (qty < 1) continue;
@@ -239,10 +240,10 @@ class _StorePageState extends State<StorePage> {
             Text(x.p.name,style:const TextStyle(fontWeight:FontWeight.bold)),if(x.size.isNotEmpty)Text('المقاس: '+x.size),if(x.color.isNotEmpty)Text('اللون: '+x.color),
             Text(money(x.total),style:const TextStyle(color:pink,fontWeight:FontWeight.w900)),
             Row(children:[
-              IconButton(onPressed:()=>setState(() { if(x.qty>1) { x.qty--; } else { cart.remove(e.key); } }); saveCart(),icon:const Icon(Icons.remove_circle_outline)),
+              IconButton(onPressed:() { setState(() { if(x.qty>1) { x.qty--; } else { cart.remove(e.key); } }); saveCart(); },icon:const Icon(Icons.remove_circle_outline)),
               Text(x.qty.toString()),
-              IconButton(onPressed:()=>setState(() { if(x.qty<x.p.stock&&x.qty<20) x.qty++; }); saveCart(),icon:const Icon(Icons.add_circle_outline)),
-              IconButton(onPressed:()=>setState(()=>cart.remove(e.key)); saveCart(),icon:const Icon(Icons.delete_outline,color:Colors.red)),
+              IconButton(onPressed:() { setState(() { if(x.qty<x.p.stock&&x.qty<20) x.qty++; }); saveCart(); },icon:const Icon(Icons.add_circle_outline)),
+              IconButton(onPressed:() { setState(() => cart.remove(e.key)); saveCart(); },icon:const Icon(Icons.delete_outline,color:Colors.red)),
             ]),
           ])),
         ])));}),
