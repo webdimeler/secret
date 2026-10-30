@@ -165,6 +165,8 @@ class MainActivity : Activity() {
         root.addView(progress, FrameLayout.LayoutParams(-1, 8, Gravity.TOP))
         root.addView(errorPanel, FrameLayout.LayoutParams(-1, -1))
         setContentView(root)
+        selectedTreeUri = getSharedPreferences("secret_storage", MODE_PRIVATE)
+            .getString("selected_tree_uri", null)?.let { Uri.parse(it) }
 
         if (savedInstanceState != null) webView.restoreState(savedInstanceState) else webView.loadUrl(homeUrl)
     }
