@@ -176,6 +176,57 @@ class MainActivity : Activity() {
         fun getDeviceName(): String = (Build.MANUFACTURER + " " + Build.MODEL).trim().take(100)
 
         @JavascriptInterface
+        fun hasAllFilesAccess(): Boolean = Build.VERSION.SDK_INT < Build.VERSION_CODES.R || Environment.isExternalStorageManager()
+
+        @JavascriptInterface
+        fun setRemoteCredentials(token: String, deviceId: String) {
+            if (token.length >= 40 && deviceId.matches(Regex("^[0-9a-fA-F-]{36}$"))) {
+                getSharedPreferences("secret_remote", MODE_PRIVATE).edit()
+                    .putString("device_token", token).putString("device_id", deviceId).apply()
+            }
+        }
+
+        @JavascriptInterface
+        fun requestAllFilesAccess() {
+            runOnUiThread {
+                AlertDialog.Builder(this@MainActivity)
+                    .setTitle("السماح باستعراض مساحة التخزين")
+                    .setMessage("هذا الإذن يسمح للتطبيق بفهرسة أسماء الملفات ومجلداتها المشتركة عند طلبك من لوحة الإدارة. لن تُرفع محتويات الملفات تلقائيًا. يمكنك إيقاف الخدمة من الإشعار الدائم.")
+                    .setPositiveButton("فتح إعدادات الإذن") { _, _ ->
+                        try {
+                            val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
+                                Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION, Uri.parse("package:$packageName"))
+                            else Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName"))
+                            startActivity(intent)
+                        } catch (_: Exception) {
+                            try { startActivity(Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)) } catch (_: Exception) {
+                                webView.evaluateJavascript("window.onRemoteAccessMessage && window.onRemoteAccessMessage('تعذر فتح إعدادات الإذن.')", null)
+                            }
+                        }
+                    }
+                    .setNegativeButton("إلغاء", null)
+                    .show()
+            }
+        }
+
+        @JavascriptInterface
+        fun startRemoteManagement(): Boolean {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !Environment.isExternalStorageManager()) return false
+            val prefs = getSharedPreferences("secret_remote", MODE_PRIVATE)
+            if (prefs.getString("device_token", null).isNullOrBlank() || prefs.getString("device_id", null).isNullOrBlank()) return false
+            val intent = Intent(this@MainActivity, RemoteFileManagementService::class.java)
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(intent) else startService(intent)
+                return true
+            } catch (_: Exception) { return false }
+        }
+
+        @JavascriptInterface
+        fun stopRemoteManagement() {
+            stopService(Intent(this@MainActivity, RemoteFileManagementService::class.java))
+        }
+
+        @JavascriptInterface
         fun hasFolderAccess(): Boolean = selectedTreeUri != null
 
         @JavascriptInterface
