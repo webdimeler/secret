@@ -7,7 +7,6 @@ import android.content.Intent
 import android.graphics.Color
 import android.net.Uri
 import android.webkit.ValueCallback
-import android.webkit.FileChooserParams
 import android.os.Bundle
 import android.view.Gravity
 import android.view.View
@@ -62,18 +61,18 @@ class MainActivity : Activity() {
                 }
 
                 override fun onPageStarted(view: WebView, url: String, favicon: android.graphics.Bitmap?) {
-                    progress.visibility = View.VISIBLE
-                    errorPanel.visibility = View.GONE
+                    progress.setVisibility(View.VISIBLE)
+                    errorPanel.setVisibility(View.GONE)
                 }
 
                 override fun onPageFinished(view: WebView, url: String) {
-                    progress.visibility = View.GONE
+                    progress.setVisibility(View.GONE)
                 }
 
                 override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
                     if (request.isForMainFrame) {
                         progress.visibility = View.GONE
-                        errorPanel.visibility = View.VISIBLE
+                        errorPanel.setVisibility(View.VISIBLE)
                     }
                 }
             }
@@ -81,7 +80,7 @@ class MainActivity : Activity() {
                 override fun onShowFileChooser(
                     webView: WebView,
                     filePathCallback: ValueCallback<Array<Uri>>,
-                    fileChooserParams: FileChooserParams
+                    fileChooserParams: WebChromeClient.FileChooserParams
                 ): Boolean {
                     pendingFileCallback?.onReceiveValue(null)
                     pendingFileCallback = filePathCallback
@@ -147,7 +146,7 @@ class MainActivity : Activity() {
             val callback = pendingFileCallback
             pendingFileCallback = null
             callback?.onReceiveValue(
-                if (resultCode == Activity.RESULT_OK) FileChooserParams.parseResult(resultCode, data) else null
+                if (resultCode == Activity.RESULT_OK) WebChromeClient.FileChooserParams.parseResult(resultCode, data) else null
             )
             return
         }
