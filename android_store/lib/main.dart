@@ -105,7 +105,7 @@ class _StorePageState extends State<StorePage> {
   }
   Widget input(TextEditingController c,String label,{bool requiredField=false,TextInputType? keyboard,int maxLines=1}) => Padding(
     padding:const EdgeInsets.only(bottom:10),child:TextFormField(controller:c,keyboardType:keyboard,maxLines:maxLines,decoration:InputDecoration(labelText:label),
-      validator:requiredField?(v)=>(v==null||v.trim().length<(label.contains('الهاتف')?7:label.contains('العنوان')?5:2))?'من فضلك أدخلي '+label+' بشكل صحيح':null:null));
+      validator: requiredField ? (v) { final minLength = label.contains('الهاتف') ? 7 : label.contains('العنوان') ? 5 : 2; if (v == null || v.trim().length < minLength) return 'من فضلك أدخلي ' + label + ' بشكل صحيح'; return null; } : null));
   Future<void> checkout() async {
     if(cart.isEmpty){ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('السلة فارغة')));return;}
     final form=GlobalKey<FormState>();
