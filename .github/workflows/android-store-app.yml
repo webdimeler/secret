@@ -65,6 +65,11 @@ jobs:
               im.resize((size,size), Image.Resampling.LANCZOS).save(folder / "ic_launcher.png")
               im.resize((size,size), Image.Resampling.LANCZOS).save(folder / "ic_launcher_round.png")
           print("Secret KFS launcher icons generated.")
+          # Remove generated adaptive wrappers so Android uses these custom bitmap icons on every API level.
+          for name in ("ic_launcher.xml", "ic_launcher_round.xml"):
+              p = base / "mipmap-anydpi-v26" / name
+              if p.exists():
+                  p.unlink()
           PY
       - name: Ensure release internet permission
         working-directory: android_store
