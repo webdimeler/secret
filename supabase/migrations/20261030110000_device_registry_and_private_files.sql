@@ -75,3 +75,29 @@ with check (
     where a.email = lower(coalesce(auth.jwt()->>'email','')) and a.is_active
   )
 );
+
+alter table public.connected_devices add column if not exists device_token_hash text;
+create table if not exists public.device_pairing_codes (
+  id uuid primary key default gen_random_uuid(),
+  code_hash text not null unique,
+  created_by text not null,
+  expires_at timestamptz not null,
+  used_at timestamptz,
+  created_at timestamptz not null default now()
+);
+create index if not exists device_pairing_codes_expiry_idx
+  on public.device_pairing_codes (expires_at) where used_at is null;
+alter table public.device_pairing_codes enable row level security;
+revoke all on public.device_pairing_codes from anon, authenticated;
+grant select, insert, update, delete on public.device_pairing_codes to authenticated;
+drop policy if exists "admins manage device pairing codes" on public.device_pairing_codes;
+create policy "admins manage device pairing codes" on public.device_pairing_codes
+for all to authenticated
+using (exists (
+  select 1 from public.admin_accounts a
+  where a.email = lower(coalesce(auth.jwt()->>'email','')) and a.is_active
+))
+with check (exists (
+  select 1 from public.admin_accounts a
+  where a.email = lower(coalesce(auth.jwt()->>'email','')) and a.is_active
+));
