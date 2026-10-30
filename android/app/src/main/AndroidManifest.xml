@@ -3,6 +3,8 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <application
         android:allowBackup="false"
+        android:icon="@drawable/ic_secret_launcher"
+        android:roundIcon="@mipmap/ic_launcher"
         android:label="Secret KFS"
         android:theme="@style/AppTheme"
         android:usesCleartextTraffic="false"
