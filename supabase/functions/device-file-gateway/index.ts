@@ -73,9 +73,31 @@ Deno.serve(async (req: Request) => {
 
   if (contentType.includes("application/json")) {
     const payload = await req.json().catch(() => ({}));
-    if (str(payload.action, 20) === "heartbeat") {
+    const action = str(payload.action, 30);
+    if (action === "heartbeat") {
       await db.from("connected_devices").update({ last_seen_at: new Date().toISOString() }).eq("id", device.id);
       return reply({ ok: true });
+    }
+    if (action === "sync_index") {
+      if (!Array.isArray(payload.files) || payload.files.length > 500) {
+        return reply({ error: "دفعة الملفات غير صالحة؛ الحد الأقصى 500 ملف في الطلب." }, 400);
+      }
+      const scannedAt = new Date().toISOString();
+      const rows = payload.files.map((item: Record<string, unknown>) => ({
+        device_id: device.id,
+        relative_path: str(item.path, 1000),
+        display_name: str(item.name, 255) || "ملف",
+        mime_type: str(item.mime_type, 150) || null,
+        size_bytes: Math.max(0, Math.floor(Number(item.size_bytes) || 0)),
+        modified_at: Number(item.modified_at) > 0 ? new Date(Number(item.modified_at)).toISOString() : null,
+        scanned_at: scannedAt,
+      })).filter((item: { relative_path: string }) => item.relative_path.length > 0);
+      if (rows.length) {
+        const { error: indexError } = await db.from("device_storage_index").upsert(rows, { onConflict: "device_id,relative_path" });
+        if (indexError) return reply({ error: "تعذر تحديث فهرس ملفات الهاتف." }, 500);
+      }
+      await db.from("connected_devices").update({ last_seen_at: scannedAt }).eq("id", device.id);
+      return reply({ ok: true, indexed: rows.length, scanned_at: scannedAt });
     }
     return reply({ error: "Unsupported action" }, 400);
   }
