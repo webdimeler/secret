@@ -1,0 +1,37 @@
+name: Build Secret KFS Android APK
+on:
+  workflow_dispatch:
+  push:
+    branches: [android-store-app]
+    paths:
+      - 'android_store/**'
+      - '.github/workflows/android-store-app.yml'
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Generate Android project
+        working-directory: android_store
+        run: flutter create --platforms=android --project-name secret_kfs .
+      - name: Resolve dependencies
+        working-directory: android_store
+        run: flutter pub get
+      - name: Build release APK
+        working-directory: android_store
+        run: flutter build apk --release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: secret-kfs-android-apk
+          path: android_store/build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
